@@ -1,0 +1,12 @@
+# Create the file
+@"
+flask==3.0.3
+flask-cors==4.0.1
+flask-limiter==3.8.0
+scikit-learn==1.5.1
+joblib==1.4.2
+numpy==1.26.4
+"@ | Out-File -FilePath "backend\requirements.txt" -Encoding UTF8
+
+# Install everything
+pip install -r backend\requirements.txt
