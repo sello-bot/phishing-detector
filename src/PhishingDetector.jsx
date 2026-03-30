@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const EXAMPLES = [
   { label: "✅ Safe: GitHub", val: "https://github.com/anthropics/anthropic-sdk-python", type: "url" },
   { label: "✅ Safe: Wikipedia", val: "https://en.wikipedia.org/wiki/Phishing", type: "url" },
@@ -31,7 +33,7 @@ export default function PhishingDetector() {
     setLoading(true); setError(null); setResult(null);
 
     try {
-      const response = await fetch("http://localhost:5000/predict", {
+      const response = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, type: inputType }),
@@ -44,13 +46,18 @@ export default function PhishingDetector() {
       }
 
       const data = await response.json();
-      const enriched = { ...data, input: text, inputType, timestamp: new Date().toLocaleTimeString() };
+      const enriched = {
+        ...data,
+        input: text,
+        inputType,
+        timestamp: new Date().toLocaleTimeString(),
+      };
       setResult(enriched);
       setScanCount(c => c + 1);
       setHistory(h => [enriched, ...h].slice(0, 10));
     } catch (e) {
-      if (e.message.includes("fetch") || e.message.includes("Failed")) {
-        setError("Cannot connect to Flask API. Make sure 'python backend\\app.py' is running in Terminal 1.");
+      if (e.message.toLowerCase().includes("fetch") || e.message.toLowerCase().includes("failed")) {
+        setError(`Cannot connect to API at ${API_URL}. Make sure the backend is running.`);
       } else {
         setError(e.message || "Scan failed. Please try again.");
       }
@@ -65,7 +72,7 @@ export default function PhishingDetector() {
   };
 
   const C = {
-    bg: "#080c10", border: "#1c2128", border2: "#21262d",
+    bg: "#080c10", border: "#1c2128",
     green: "#00ff88", cyan: "#00d4ff", red: "#ff4444",
     text: "#e2e8f0", muted: "#64748b", dim: "#3d4a57",
   };
@@ -113,7 +120,7 @@ export default function PhishingDetector() {
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: C.green, letterSpacing: 2 }}>PHISHGUARD AI</div>
-              <div style={{ fontSize: 9, color: C.dim, letterSpacing: 1.5 }}>REAL-TIME THREAT DETECTION · Flask ML Backend · v2.4</div>
+              <div style={{ fontSize: 9, color: C.dim, letterSpacing: 1.5 }}>REAL-TIME THREAT DETECTION · Flask + RandomForest ML · v2.4</div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
               {[[scanCount, "TOTAL", C.cyan], [safeCount, "SAFE", C.green], [phishCount, "THREATS", C.red]].map(([v, l, c]) => (
@@ -125,10 +132,12 @@ export default function PhishingDetector() {
             </div>
           </div>
 
-          {/* API status indicator */}
+          {/* API status bar */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, boxShadow: `0 0 6px ${C.green}`, animation: "pulse 2s infinite" }} />
-            <span style={{ fontSize: 9, color: C.dim, letterSpacing: 1.5 }}>FLASK API · localhost:5000 · ML MODEL ACTIVE</span>
+            <span style={{ fontSize: 9, color: C.dim, letterSpacing: 1.5 }}>
+              API · {API_URL} · RANDOMFOREST MODEL ACTIVE
+            </span>
           </div>
 
           <div style={{ height: 1, background: `linear-gradient(90deg, ${C.green}44, ${C.cyan}22, transparent)` }} />
@@ -146,7 +155,6 @@ export default function PhishingDetector() {
           <div>
             <div style={{ background: "rgba(255,255,255,0.018)", border: `1px solid ${C.border}`, borderRadius: 7, padding: 18, marginBottom: 18 }}>
 
-              {/* Type toggle */}
               <div style={{ display: "flex", gap: 6, marginBottom: 11, alignItems: "center" }}>
                 {[["url", "🔗 URL"], ["email", "📧 Email"]].map(([t, l]) => (
                   <button key={t} onClick={() => setInputType(t)} style={{ background: inputType === t ? "rgba(0,255,136,0.09)" : "transparent", border: `1px solid ${inputType === t ? "rgba(0,255,136,0.35)" : C.border}`, borderRadius: 3, color: inputType === t ? C.green : C.muted, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, letterSpacing: 1.5, padding: "5px 11px", cursor: "pointer", transition: "all 0.15s" }}>{l}</button>
@@ -195,10 +203,8 @@ export default function PhishingDetector() {
                   <span style={{ fontSize: 13, flexShrink: 0 }}>⚠️</span>
                   <div>
                     <div style={{ fontSize: 11, color: "#ff6666", marginBottom: 4 }}>{error}</div>
-                    {error.includes("Flask") && (
-                      <div style={{ fontSize: 10, color: C.muted }}>
-                        Open Terminal 1 and run: <span style={{ color: C.cyan }}>python backend\app.py</span>
-                      </div>
+                    {error.includes("connect") && (
+                      <div style={{ fontSize: 10, color: C.muted }}>Backend: <span style={{ color: C.cyan }}>{API_URL}</span></div>
                     )}
                   </div>
                 </div>
@@ -223,13 +229,12 @@ export default function PhishingDetector() {
         {activeTab === "history" && (
           <div>
             {history.length === 0
-              ? <div style={{ textAlign: "center", padding: "56px 20px", color: C.dim }}><div style={{ fontSize: 28, marginBottom: 10 }}>📋</div><div style={{ fontSize: 11, letterSpacing: 1 }}>No scans yet. Use the scanner tab.</div></div>
+              ? <div style={{ textAlign: "center", padding: "56px 20px", color: C.dim }}><div style={{ fontSize: 28, marginBottom: 10 }}>📋</div><div style={{ fontSize: 11 }}>No scans yet.</div></div>
               : (
                 <>
                   <div style={{ fontSize: 9, color: C.dim, letterSpacing: 1.5, marginBottom: 10 }}>RECENT SCANS — {history.length} RESULTS</div>
                   {history.map((h, i) => (
-                    <div key={i} className="hist-row"
-                      onClick={() => { setInput(h.input); setInputType(h.inputType || "url"); setResult(h); setActiveTab("scanner"); }}
+                    <div key={i} className="hist-row" onClick={() => { setInput(h.input); setInputType(h.inputType || "url"); setResult(h); setActiveTab("scanner"); }}
                       style={{ border: `1px solid ${C.border}`, borderRadius: 5, padding: "11px 14px", marginBottom: 7, display: "flex", alignItems: "center", gap: 11 }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: h.label === "phishing" ? C.red : C.green, boxShadow: `0 0 5px ${h.label === "phishing" ? C.red : C.green}` }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -254,7 +259,7 @@ export default function PhishingDetector() {
         {activeTab === "about" && (
           <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.8 }}>
             <AboutSection title="HOW IT WORKS" color={C.green}>
-              <p>Your input is sent to the <strong style={{ color: C.text }}>Flask API on localhost:5000</strong>, which extracts 28 features and runs them through a <strong style={{ color: C.text }}>RandomForest classifier</strong> (300 trees, ~96% accuracy). Results return in milliseconds.</p>
+              <p>Your input is sent to the <strong style={{ color: C.text }}>Flask API</strong> which extracts <strong style={{ color: C.text }}>28 features</strong> and runs them through a <strong style={{ color: C.text }}>RandomForest classifier</strong> (300 trees, ~96% accuracy). Results return in milliseconds with a confidence score and risk level.</p>
             </AboutSection>
             <AboutSection title="28 EXTRACTED FEATURES" color={C.cyan}>
               {[
@@ -273,11 +278,14 @@ export default function PhishingDetector() {
                 </div>
               ))}
             </AboutSection>
-            <AboutSection title="STACK" color={C.green}>
-              <p>Python 3.11 · Flask 3.0 · scikit-learn RandomForest · joblib · Flask-Limiter · React 18 · Vite</p>
+            <AboutSection title="DEPLOYMENT" color={C.green}>
+              <p>Frontend on <strong style={{ color: C.text }}>Vercel</strong>. Backend Flask API on <strong style={{ color: C.text }}>Railway</strong> at <span style={{ color: C.cyan }}>{API_URL}</span>.</p>
+            </AboutSection>
+            <AboutSection title="STACK" color={C.cyan}>
+              <p>React 18 · Vite · Python 3.11 · Flask 3.0 · scikit-learn · RandomForest · joblib · Flask-Limiter · Railway · Vercel</p>
             </AboutSection>
             <div style={{ background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.15)", borderRadius: 6, padding: 12 }}>
-              <strong style={{ color: C.green }}>⚠ Note:</strong> For production use, supplement training data with real phishing datasets from PhishTank or OpenPhish for higher accuracy.
+              <strong style={{ color: C.green }}>⚠ Note:</strong> For higher accuracy in production, supplement with real phishing datasets from PhishTank or OpenPhish.
             </div>
           </div>
         )}
@@ -317,9 +325,7 @@ function ResultCard({ result }) {
           {isPhish ? "🚨" : "✅"}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: p.accent, letterSpacing: 0.5 }}>
-            {isPhish ? "PHISHING DETECTED" : "SAFE TO PROCEED"}
-          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: p.accent }}>{isPhish ? "PHISHING DETECTED" : "SAFE TO PROCEED"}</div>
           <div style={{ fontSize: 10, color: "#64748b", marginTop: 2, letterSpacing: 1 }}>
             RISK: <span style={{ color: p.text }}>{(result.risk_level || "").toUpperCase()}</span>
             {" · "}CONFIDENCE: <span style={{ color: p.text }}>{conf}%</span>
@@ -333,7 +339,7 @@ function ResultCard({ result }) {
       <div style={{ padding: "14px 18px", borderBottom: `1px solid ${p.border}22` }}>
         {[
           [pProb, "⚠ PHISHING PROBABILITY", "#ff4444", "linear-gradient(90deg,#ff4444,#ff7777)"],
-          [sProb, "✓ SAFE PROBABILITY", "#00ff88", "linear-gradient(90deg,#00ff88,#00d4ff)"]
+          [sProb, "✓ SAFE PROBABILITY", "#00ff88", "linear-gradient(90deg,#00ff88,#00d4ff)"],
         ].map(([v, lbl, tc, fill]) => (
           <div key={lbl} style={{ marginBottom: v === pProb ? 10 : 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -355,7 +361,7 @@ function ResultCard({ result }) {
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       <div style={{ padding: "12px 18px", display: "flex", gap: 16, flexWrap: "wrap" }}>
         {[
           ["INPUT LENGTH", `${result.input_length} chars`],
