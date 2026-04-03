@@ -43,7 +43,12 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-me-in-production")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB max request
 
-CORS(app, origins=["http://localhost:3000", "http://localhost:5173"])
+CORS(app, origins=[
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://phishing-detector.vercel.app",
+    "https://phishing-detector-sello-bot.vercel.app",
+])
 
 # Rate limiting: 30 requests/minute per IP
 limiter = Limiter(
